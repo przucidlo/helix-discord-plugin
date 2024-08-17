@@ -1,7 +1,9 @@
 use std::io::Error as IoError;
 use std::str::FromStr;
+use std::thread;
 use std::{env, path::PathBuf};
 
+use crate::message::Message;
 use crate::{packet::Packet, socket::Socket};
 
 pub struct Discord {
@@ -20,16 +22,60 @@ impl Discord {
                 let mut socket = Socket::connect(pathbuf).expect("Could not connect to socket");
 
                 let packet = socket
-                    .invoke(Packet::HANDSHAKE(1003450375732482138))
+                    .invoke(Packet::HANDSHAKE(1274291961792167997))
                     .expect("Fail");
 
                 if matches!(packet, Packet::FRAME(_)) {
-                    println!("{:?}", String::from_utf8(packet.payload()));
+                    //TODO: Make sure handshake was successful
                 }
 
-                return Ok(Self { socket });
+                let mut discord = Self { socket };
+
+                discord.listen()?;
+
+                return Ok(discord);
             },
             Err(_) => panic!("Could not find TMPDIR variable"),
         };
+    }
+
+    fn listen(&mut self) -> Result<(), IoError> {
+        let mut socket = self.socket.try_clone()?;
+
+        let handle = thread::spawn(move || loop {
+            let mut response = [0; 1024];
+
+            if !socket.read(&mut response).is_ok() {
+                break;
+            }
+
+            if response.len() == 0 {
+                break;
+            }
+
+            let Ok(packet) = Packet::try_from(response.to_vec()) else {
+                continue;
+            };
+
+            match packet {
+                Packet::HANDSHAKE(_) => continue,
+                Packet::FRAME(_) => {
+                    continue;
+                }
+                Packet::CLOSE => break,
+                Packet::PING => {
+                    println!("Received ping");
+                }
+                Packet::PONG => {
+                    println!("Received pong");
+                }
+            }
+        });
+
+        self.socket.write(Message::idle_activity().into()).unwrap();
+
+        handle.join();
+
+        Ok(())
     }
 }

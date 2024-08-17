@@ -5,6 +5,8 @@ use std::{
 };
 use uuid::Uuid;
 
+use crate::message::Message;
+
 pub enum Packet {
     HANDSHAKE(u64),
     FRAME(Vec<u8>),
@@ -24,20 +26,12 @@ impl Packet {
     }
 
     pub fn header(&self) -> Vec<u8> {
-        match self {
-            Packet::HANDSHAKE(_) => {
-                let mut bytes: Vec<u8> = vec![];
+        let mut bytes: Vec<u8> = vec![];
 
-                bytes.extend(u32::to_le_bytes(0 as u32));
-                bytes.extend(u32::to_le_bytes(self.payload_len()));
+        bytes.extend(u32::to_le_bytes(self.op_code() as u32));
+        bytes.extend(u32::to_le_bytes(self.payload().len() as u32));
 
-                bytes
-            }
-            Packet::FRAME(_p) => todo!(),
-            Packet::CLOSE => todo!(),
-            Packet::PING => todo!(),
-            Packet::PONG => todo!(),
-        }
+        bytes
     }
 
     pub fn payload(&self) -> Vec<u8> {
@@ -52,13 +46,24 @@ impl Packet {
             .to_owned(),
             Packet::FRAME(p) => p.to_owned(),
             Packet::CLOSE => todo!(),
-            Packet::PING => todo!(),
+            Packet::PING => json!({
+                "ping": 1
+            })
+            .to_string()
+            .as_bytes()
+            .to_vec(),
             Packet::PONG => todo!(),
         }
     }
 
-    pub fn payload_len(&self) -> u32 {
-        u32::try_from(self.payload().len()).unwrap()
+    pub fn op_code(&self) -> usize {
+        match self {
+            Packet::HANDSHAKE(_) => 0,
+            Packet::FRAME(_) => 1,
+            Packet::CLOSE => 2,
+            Packet::PING => 3,
+            Packet::PONG => 4,
+        }
     }
 
     pub fn parse(value: Vec<u8>) -> Result<(u32, usize, Vec<u8>), Box<dyn Error>> {
@@ -106,5 +111,14 @@ impl TryFrom<Vec<u8>> for Packet {
                 return Err(IoError::from(ErrorKind::InvalidData));
             }
         };
+    }
+}
+
+impl From<Message> for Packet {
+    fn from(value: Message) -> Self {
+        //TODO: Convert to try_into
+        let bytes = serde_json::to_string(&value).unwrap().as_bytes().to_vec();
+
+        Self::FRAME(bytes)
     }
 }

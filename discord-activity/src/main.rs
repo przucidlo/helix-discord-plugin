@@ -1,6 +1,7 @@
 use discord::Discord;
 
 mod discord;
+mod message;
 mod packet;
 mod socket;
 

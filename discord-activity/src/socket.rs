@@ -32,7 +32,7 @@ impl Socket {
         Ok(Packet::try_from(response.to_vec())?)
     }
 
-    fn read(&mut self, buffer: &mut [u8]) -> Result<usize, IoError> {
+    pub fn read(&mut self, buffer: &mut [u8]) -> Result<usize, IoError> {
         loop {
             match self.socket.read(buffer) {
                 Ok(size) => return Ok(size),
@@ -45,5 +45,15 @@ impl Socket {
 
             thread::sleep(time::Duration::from_millis(500));
         }
+    }
+
+    pub fn write(&mut self, packet: Packet) -> Result<(), IoError> {
+        self.socket.write_all(&packet.as_bytes())
+    }
+
+    pub fn try_clone(&self) -> Result<Self, IoError> {
+        let socket = self.socket.try_clone()?;
+
+        Ok(Self { socket })
     }
 }
