@@ -16,7 +16,7 @@ impl Discord {
 
         match unix_path {
             Ok(unix_path) => loop {
-                let pathbuf = PathBuf::from_str(&format!("{}discord-ipc-0", unix_path))
+                let pathbuf = PathBuf::from_str(&format!("{unix_path}discord-ipc-0"))
                     .expect("Could not build socket path");
 
                 let mut socket = Socket::connect(pathbuf).expect("Could not connect to socket");
@@ -63,16 +63,18 @@ impl Discord {
                     continue;
                 }
                 Packet::CLOSE => break,
-                Packet::PING => {
-                    println!("Received ping");
-                }
-                Packet::PONG => {
-                    println!("Received pong");
+                Packet::PING(p) => match socket.write(Packet::PONG(p)) {
+                    Ok(_) | Err(_) => continue,
+                },
+                Packet::PONG(_) => {
+                    continue;
                 }
             }
         });
 
-        self.socket.write(Message::idle_activity().into()).unwrap();
+        self.socket
+            .write(Message::file_activity("discord.rs").into())
+            .unwrap();
 
         handle.join();
 

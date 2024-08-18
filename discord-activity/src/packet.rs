@@ -11,8 +11,8 @@ pub enum Packet {
     HANDSHAKE(u64),
     FRAME(Vec<u8>),
     CLOSE,
-    PING,
-    PONG,
+    PING(Vec<u8>),
+    PONG(Vec<u8>),
 }
 
 impl Packet {
@@ -45,14 +45,9 @@ impl Packet {
             .as_bytes()
             .to_owned(),
             Packet::FRAME(p) => p.to_owned(),
-            Packet::CLOSE => todo!(),
-            Packet::PING => json!({
-                "ping": 1
-            })
-            .to_string()
-            .as_bytes()
-            .to_vec(),
-            Packet::PONG => todo!(),
+            Packet::CLOSE => Vec::new(),
+            Packet::PING(p) => p.to_owned(),
+            Packet::PONG(p) => p.to_owned(),
         }
     }
 
@@ -61,8 +56,8 @@ impl Packet {
             Packet::HANDSHAKE(_) => 0,
             Packet::FRAME(_) => 1,
             Packet::CLOSE => 2,
-            Packet::PING => 3,
-            Packet::PONG => 4,
+            Packet::PING(_) => 3,
+            Packet::PONG(_) => 4,
         }
     }
 
@@ -102,10 +97,10 @@ impl TryFrom<Vec<u8>> for Packet {
                 return Ok(Self::CLOSE);
             }
             3 => {
-                return Ok(Self::PING);
+                return Ok(Self::PING(payload));
             }
             4 => {
-                return Ok(Self::PONG);
+                return Ok(Self::PONG(payload));
             }
             _ => {
                 return Err(IoError::from(ErrorKind::InvalidData));
