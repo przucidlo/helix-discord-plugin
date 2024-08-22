@@ -1,3 +1,4 @@
+use core::panic;
 use std::io::Error as IoError;
 use std::str::FromStr;
 use std::thread;
@@ -26,7 +27,11 @@ impl Discord {
                     .expect("Fail");
 
                 if matches!(packet, Packet::FRAME(_)) {
-                    //TODO: Make sure handshake was successful
+                    let message: Message = packet.payload().try_into().unwrap();
+
+                    if !message.evt_matches("READY") {
+                        panic!("Handshake failure")
+                    }
                 }
 
                 let mut discord = Self { socket };
