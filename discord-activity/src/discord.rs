@@ -44,6 +44,12 @@ impl Discord {
         };
     }
 
+    pub fn publish_file_activity(&mut self, file: &str) {
+        self.socket
+            .write(Message::file_activity(file).into())
+            .unwrap();
+    }
+
     fn listen(&mut self) -> Result<(), IoError> {
         let mut socket = self.socket.try_clone()?;
 
@@ -77,9 +83,7 @@ impl Discord {
             }
         });
 
-        self.socket
-            .write(Message::file_activity("discord.rs").into())
-            .unwrap();
+        self.publish_file_activity("discord.rs");
 
         handle.join();
 
